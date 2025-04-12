@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
 use pyo3::ffi::*;
-use std::os::raw::{c_char, c_int};
+use std::os::raw::c_int;
 use std::ptr::NonNull;
-
-#[allow(non_snake_case)]
-#[inline(always)]
-pub unsafe fn PyBytes_AS_STRING(op: *mut PyObject) -> *const c_char {
-    &(*op.cast::<PyBytesObject>()).ob_sval as *const c_char
-}
 
 #[allow(non_snake_case)]
 #[inline(always)]

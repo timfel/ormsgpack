@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: (Apache-2.0 OR MIT)
 
+use pyo3::ffi::PyBytes_AS_STRING;
 use crate::ext::PyExt;
 use crate::ffi::*;
 
