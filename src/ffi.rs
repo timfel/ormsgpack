@@ -7,7 +7,7 @@ use std::ptr::NonNull;
 #[allow(non_snake_case)]
 #[inline(always)]
 pub unsafe fn PyBytes_GET_SIZE(op: *mut PyObject) -> Py_ssize_t {
-    (*op.cast::<PyVarObject>()).ob_size
+    Py_SIZE(op)
 }
 
 #[repr(C)]
