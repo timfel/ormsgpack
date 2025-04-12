@@ -61,7 +61,12 @@ pub struct Time {
 
 impl Time {
     pub fn new(ptr: *mut pyo3::ffi::PyObject, opts: Opt) -> Result<Self, TimeError> {
+        #[cfg(not(GraalPy))]
         if unsafe { (*(ptr as *mut pyo3::ffi::PyDateTime_Time)).hastzinfo != 0 } {
+            return Err(TimeError::HasTimezone);
+        }
+        #[cfg(GraalPy)]
+        if unsafe { pyo3::ffi::PyDateTime_TIME_GET_TZINFO(ptr) != crate::typeref::NONE } {
             return Err(TimeError::HasTimezone);
         }
         Ok(Time {
@@ -114,11 +119,16 @@ impl std::fmt::Display for DateTimeError {
 }
 
 fn utcoffset(ptr: *mut pyo3::ffi::PyObject) -> Result<Offset, DateTimeError> {
+    #[cfg(not(GraalPy))]
     if !unsafe { (*(ptr as *mut pyo3::ffi::PyDateTime_DateTime)).hastzinfo == 1 } {
         return Ok(Offset::default());
     }
 
     let tzinfo = ffi!(PyDateTime_DATE_GET_TZINFO(ptr));
+    #[cfg(GraalPy)]
+    if unsafe { tzinfo == crate::typeref::NONE } {
+        return Ok(Offset::default());
+    }
     let py_offset: *mut pyo3::ffi::PyObject;
     if ffi!(PyObject_HasAttr(tzinfo, CONVERT_METHOD_STR)) == 1 {
         // pendulum
@@ -193,7 +203,10 @@ impl TimeLike for DateTime {
 
 impl DateTimeLike for DateTime {
     fn has_tz(&self) -> bool {
-        unsafe { (*(self.ptr as *mut pyo3::ffi::PyDateTime_DateTime)).hastzinfo == 1 }
+        #[cfg(not(GraalPy))]
+        return unsafe { (*(self.ptr as *mut pyo3::ffi::PyDateTime_DateTime)).hastzinfo == 1 };
+        #[cfg(GraalPy)]
+        return unsafe { pyo3::ffi::PyDateTime_TIME_GET_TZINFO(self.ptr) != crate::typeref::NONE };
     }
 
     fn offset(&self) -> Offset {

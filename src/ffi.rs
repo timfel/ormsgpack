@@ -57,9 +57,14 @@ pub fn pylong_is_positive(op: *mut PyObject) -> bool {
     unsafe { (*(op as *mut PyLongObject)).long_value.lv_tag & SIGN_MASK == 0 }
 }
 
-#[cfg(not(Py_3_12))]
+#[cfg(not(any(Py_3_12, GraalPy)))]
 pub fn pylong_is_positive(op: *mut PyObject) -> bool {
     unsafe { (*(op as *mut PyVarObject)).ob_size > 0 }
+}
+
+#[cfg(GraalPy)]
+pub fn pylong_is_positive(op: *mut PyObject) -> bool {
+    unsafe { _PyLong_Sign(op) > 0 }
 }
 
 pub struct PyDictIter {

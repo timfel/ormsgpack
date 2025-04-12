@@ -33,10 +33,16 @@ impl BytesWriter {
     }
 
     fn buffer_ptr(&self) -> *mut u8 {
+        #[cfg(not(GraalPy))]
         unsafe {
             std::mem::transmute::<*mut [c_char; 1], *mut u8>(std::ptr::addr_of_mut!(
                 (*self.bytes).ob_sval
             ))
+            .add(self.len)
+        }
+        #[cfg(GraalPy)]
+        unsafe {
+            std::mem::transmute::<*mut i8, *mut u8>(PyBytes_AsString(self.bytes.cast::<PyObject>()))
             .add(self.len)
         }
     }

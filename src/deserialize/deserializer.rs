@@ -293,7 +293,10 @@ impl<'de> Deserializer<'de> {
                 marker => Err(Error::InvalidType(marker)),
             }?;
             let value = self.deserialize()?;
+            #[cfg(not(GraalPy))]
             let pyhash = unsafe { (*key.as_ptr().cast::<pyo3::ffi::PyASCIIObject>()).hash };
+            #[cfg(GraalPy)]
+            let pyhash = unsafe { pyo3::ffi::PyObject_Hash(key.as_ptr()) };
             let _ = ffi!(_PyDict_SetItem_KnownHash(
                 dict_ptr,
                 key.as_ptr(),

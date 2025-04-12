@@ -6,6 +6,7 @@ use pyo3::ffi::*;
 
 // see unicodeobject.h for documentation
 
+#[cfg(not(GraalPy))]
 pub fn unicode_from_str(buf: &str) -> *mut PyObject {
     if buf.is_empty() {
         ffi!(Py_INCREF(EMPTY_UNICODE));
@@ -24,6 +25,13 @@ pub fn unicode_from_str(buf: &str) -> *mut PyObject {
                 pyunicode_onebyte(buf, num_chars)
             }
         }
+    }
+}
+
+#[cfg(GraalPy)]
+pub fn unicode_from_str(buf: &str) -> *mut PyObject {
+    unsafe {
+        PyUnicode_FromStringAndSize(buf.as_ptr() as *const i8, buf.len() as isize)
     }
 }
 
@@ -80,6 +88,7 @@ fn pyunicode_fourbyte(buf: &str, num_chars: usize) -> *mut PyObject {
 
 #[inline]
 pub fn hash_str(op: *mut PyObject) -> Py_hash_t {
+    #[cfg(not(GraalPy))]
     unsafe {
         let data_ptr: *mut c_void = if (*op.cast::<PyASCIIObject>()).compact() == 1
             && (*op.cast::<PyASCIIObject>()).ascii() == 1
@@ -92,7 +101,11 @@ pub fn hash_str(op: *mut PyObject) -> Py_hash_t {
             (*(op as *mut PyASCIIObject)).length * ((*(op as *mut PyASCIIObject)).kind()) as isize;
         let hash = _Py_HashBytes(data_ptr, num_bytes);
         (*op.cast::<PyASCIIObject>()).hash = hash;
-        hash
+        return hash;
+    }
+    #[cfg(GraalPy)]
+    unsafe {
+        return PyObject_Hash(op);
     }
 }
 
@@ -109,19 +122,24 @@ pub fn unicode_to_str_via_ffi(op: *mut PyObject) -> Option<&'static str> {
 
 #[inline]
 pub fn unicode_to_str(op: *mut PyObject) -> Option<&'static str> {
+    #[cfg(not(GraalPy))]
     unsafe {
         if unlikely!((*op.cast::<PyASCIIObject>()).compact() == 0) {
-            unicode_to_str_via_ffi(op)
+            return unicode_to_str_via_ffi(op);
         } else if (*op.cast::<PyASCIIObject>()).ascii() == 1 {
             let ptr = op.cast::<PyASCIIObject>().offset(1) as *const u8;
             let len = (*op.cast::<PyASCIIObject>()).length as usize;
-            Some(str_from_slice!(ptr, len))
+            return Some(str_from_slice!(ptr, len));
         } else if (*op.cast::<PyCompactUnicodeObject>()).utf8_length != 0 {
             let ptr = (*op.cast::<PyCompactUnicodeObject>()).utf8 as *const u8;
             let len = (*op.cast::<PyCompactUnicodeObject>()).utf8_length as usize;
-            Some(str_from_slice!(ptr, len))
+            return Some(str_from_slice!(ptr, len));
         } else {
-            unicode_to_str_via_ffi(op)
+            return unicode_to_str_via_ffi(op);
         }
+    }
+    #[cfg(GraalPy)]
+    unsafe {
+        return unicode_to_str_via_ffi(op);
     }
 }
